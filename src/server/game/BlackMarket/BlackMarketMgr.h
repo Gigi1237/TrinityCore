@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
+* Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms of the GNU General Public License as published by the
@@ -54,59 +55,51 @@ struct BlackMarketTemplate
     WorldPackets::Item::ItemInstance Item;
 
     // Helpers
-    bool LoadFromDB(Field* fields);
+    bool LoadFromDB(Field* fields); // TO-Do implement checks
 }; 
 
 class BlackMarketEntry
 {
 public:
+    int32 MarketId = 0;
+    uint64 CurrentBid = 0;
+    int32 NumBids = 0;
+    ObjectGuid::LowType Bidder = 0;
 
-    void Update(time_t newTimeOfUpdate);
+    bool Update();
     void Initialize(int32 marketId)
     {
-        _marketId = marketId;
-        _secondsRemaining = GetTemplate()->Duration;
+        MarketId = marketId;
+        m_secondsRemaining = GetTemplate()->Duration;
     }
 
     BlackMarketTemplate* GetTemplate() const;
-    int32 GetMarketId() const { return _marketId; }
-
-    uint32 GetCurrentBid() const { return _currentBid; }
-    void SetCurrentBid(uint32 bid) { _currentBid = bid; }
-
-    int32 GetNumBids() const { return _numBids; }
-    void SetNumBids(int32 numBids) { _numBids = numBids; }
-
-    ObjectGuid::LowType GetBidder() const { return _bidder; }
-    void SetBidder(ObjectGuid::LowType bidder) { _bidder = bidder; }
+    int32 GetMarketId() const { return GetTemplate()->MarketID; }
 
     time_t GetSecondsRemaining() const; // Get seconds remaining relative to now
     time_t GetExpirationTime() const;
+    void SetSecondsRemaining(time_t seconds); // Set seconds remaining relative to sBlackMarketManager()->GetLastUpdate()
     bool IsCompleted() const;
 
     void DeleteFromDB(SQLTransaction& trans) const;
     void SaveToDB(SQLTransaction& trans) const;
     bool LoadFromDB(Field* fields);
 
-    uint64 GetMinIncrement() const { return (_currentBid / 20) - ((_currentBid / 20) % GOLD); } //5% increase every bid (has to be round gold value)
+    uint64 GetMinIncrement() const { return CurrentBid / 20; } //5% increase every bid
     bool ValidateBid(uint64 bid) const;
     void PlaceBid(uint64 bid, Player* player, SQLTransaction& trans);
 
     std::string BuildAuctionMailSubject(BMAHMailAuctionAnswers response) const;
-    std::string BuildAuctionMailBody();
+    std::string BuildAuctionMailBody(); // ToDo: FIX
 
-    void MailSent() { _mailSent = true; } // Set when mail has been sent
-    bool GetMailSent() const { return _mailSent; }
+    void MailSent() { m_mailSent = true; } // Set when mail has been sent
+    bool GetMailSent() { return m_mailSent; }
 
 private:
-    int32 _marketId = 0;
-    uint64 _currentBid = 0;
-    int32 _numBids = 0;
-    ObjectGuid::LowType _bidder = 0;
+    time_t m_secondsRemaining;
 
-    time_t _secondsRemaining;
-
-    bool _mailSent = false;
+    bool m_mailSent = false;
+    bool m_newBid = false; 
 };
 
 class BlackMarketMgr
@@ -136,8 +129,8 @@ class BlackMarketMgr
     void LoadAuctions();
 
     void Update(bool updateTime = false);
-    void RefreshAuctions();
-    time_t GetLastUpdate() const { return _LastUpdate; }
+    void RefreshAuctions(SQLTransaction& trans);
+    time_t GetLastUpdate() { return mLastUpdate; }
         
     bool IsEnabled() const;
 
@@ -157,10 +150,9 @@ class BlackMarketMgr
       BlackMarketEntryMap mAuctions;
       BlackMarketTemplateMap mTemplates;
 
-      time_t _LastUpdate;
+      time_t mLastUpdate;
 };
 
 #define sBlackMarketMgr BlackMarketMgr::instance()
 
 #endif
-
