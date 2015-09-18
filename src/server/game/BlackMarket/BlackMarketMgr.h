@@ -96,7 +96,7 @@ public:
     bool GetMailSent() { return m_mailSent; }
 
 private:
-    time_t m_secondsRemaining;
+    time_t m_secondsRemaining = 0;
 
     bool m_mailSent = false;
     bool m_newBid = false; 
@@ -150,7 +150,7 @@ class BlackMarketMgr
       BlackMarketEntryMap mAuctions;
       BlackMarketTemplateMap mTemplates;
 
-      time_t mLastUpdate;
+      time_t mLastUpdate = 0;
 };
 
 #define sBlackMarketMgr BlackMarketMgr::instance()
